@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StarhubXbot :: login</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  :root {
+    --bg: #030704; --panel: #06110a; --border: #124024;
+    --text: #c8ffd8; --muted: #4f9c6c; --signal: #00ff66; --danger: #ff4d4d;
+    --mono: "Share Tech Mono", "Consolas", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: var(--mono); display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  canvas { position: fixed; inset: 0; z-index: 0; }
+  .scanlines {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px);
+  }
+  .card {
+    position: relative; z-index: 2; width: min(400px, 92vw);
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 32px 28px;
+    box-shadow: 0 0 40px rgba(0,255,102,0.08), inset 0 0 30px rgba(0,255,102,0.03);
+  }
+  .logo {
+    text-align: center; margin-bottom: 24px;
+  }
+  .logo h1 {
+    font-size: 1.1rem; color: var(--signal); letter-spacing: 0.15em;
+    text-shadow: 0 0 12px rgba(0,255,102,0.4);
+  }
+  .logo p { color: var(--muted); font-size: 0.75rem; margin-top: 6px; }
+  label { display: block; color: var(--muted); font-size: 0.75rem; margin-bottom: 4px; }
+  input {
+    width: 100%; background: #030a06; border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 0.95rem;
+    padding: 10px 12px; border-radius: 4px; margin-bottom: 16px;
+    outline: none; transition: border-color 0.15s;
+  }
+  input:focus { border-color: var(--signal); }
+  button {
+    width: 100%; background: transparent; border: 1px solid var(--signal);
+    color: var(--signal); font-family: var(--mono); font-size: 0.95rem;
+    padding: 12px; border-radius: 4px; cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+  button:hover { background: rgba(0,255,102,0.1); box-shadow: 0 0 16px rgba(0,255,102,0.15); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .err {
+    color: var(--danger); font-size: 0.8rem; min-height: 1.2em; margin-bottom: 10px;
+    text-align: center;
+  }
+  .hint { color: var(--muted); font-size: 0.7rem; text-align: center; margin-top: 18px; }
+</style>
+</head>
+<body>
+<canvas id="matrix-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="card">
+  <div class="logo">
+    <img src="/logo.png" alt="StarhubXbot" style="width:72px;height:72px;border-radius:50%;margin-bottom:12px;box-shadow:0 0 20px rgba(0,150,255,0.35)">
+    <h1>STARHUBXBOT</h1>
+    <p>secure access · matrix terminal</p>
+  </div>
+  <div class="err" id="err"></div>
+  <form id="login-form">
+    <label for="user">username</label>
+    <input id="user" name="user" autocomplete="username" required autofocus>
+    <label for="pass">password</label>
+    <input id="pass" name="pass" type="password" autocomplete="current-password" required>
+    <button type="submit" id="btn">authenticate →</button>
+  </form>
+  <p class="hint">Credentials from your .env (ADMIN_USER / ADMIN_PASS)</p>
+</div>
+<script>
+(function () {
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, cols, drops;
+  const chars = 'アイウエオカキクケコサシスセソ01ABCDEFGHIJKLMNOPQRSTUVWXYZ$#@%&';
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    cols = Math.floor(w / 16);
+    drops = new Array(cols).fill(1);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  function draw() {
+    ctx.fillStyle = 'rgba(3,7,4,0.08)';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#00ff66';
+    ctx.font = '14px monospace';
+    for (let i = 0; i < drops.length; i++) {
+      const ch = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(ch, i * 16, drops[i] * 16);
+      if (drops[i] * 16 > h && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+  setInterval(draw, 60);
+})();
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('err');
+  err.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'authenticating…';
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user: document.getElementById('user').value,
+        pass: document.getElementById('pass').value,
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      window.location.replace('/');
+    } else {
+      err.textContent = data.error || 'Login failed';
+      btn.disabled = false;
+      btn.textContent = 'authenticate →';
+    }
+  } catch (ex) {
+    err.textContent = ex.message;
+    btn.disabled = false;
+    btn.textContent = 'authenticate →';
+  }
+});
+</script>
+</body>
+</html>
