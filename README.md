@@ -61,9 +61,9 @@ npm start
 
 ```text
 ╔════════════════════════════════╗
-║     STARHUBX  ·  PAIRING           ║
+║     STARHUBX  ·  PAIRING             ║
 ║                                      ║     
-║     Enter code on your phone           ║
+║     Enter code on your phone         ║
 ╚════════════════════════════════╝
 ```
 
